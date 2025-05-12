@@ -170,35 +170,3 @@ export const fetchUserProfile = (req, res) => {
       res.status(500).json({ error: "Internal server error" });
     });
 };
-
-export const fetchMultipleUserProfiles = async (req, res) => {
-  const { usernames } = req.body;
-  if (!Array.isArray(usernames) || usernames.length === 0) {
-    return res.status(400).json({ error: "usernames must be a non-empty array" });
-  }
-
-  const results = await Promise.all(
-    usernames.map(async (username) => {
-      try {
-        const response = await fetch("https://leetcode.com/graphql", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Referer: "https://leetcode.com",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-          },
-          body: JSON.stringify({ query: query, variables: { username } }),
-        });
-        const json = await response.json();
-        if (json.errors) {
-          return { username, error: "Not found" };
-        }
-        return formatData(json.data);
-      } catch (err) { 
-        return { username, error: "Error fetching data" };
-      }
-    })
-  );
-
-  res.json(results);
-};
