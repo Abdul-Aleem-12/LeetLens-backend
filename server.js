@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { fetchUserProfile} from "./fetch.js"; // Updated import
+import { fetchUserProfile} from "./fetch.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -21,7 +21,7 @@ app.use(
 app.set("trust proxy", 1);
 const limiter = rateLimit({
     windowMs: 2 * 60 * 1000, // 15 minutes
-    limit: 15, // Limit of 10 requests per windowMs
+    limit: 15, // Limit of 15 requests per windowMs
     standardHeaders: "draft-7",
     legacyHeaders: false,
 });
