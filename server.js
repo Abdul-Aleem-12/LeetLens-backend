@@ -1,50 +1,59 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { fetchUserProfile} from "./fetch.js";
+import { fetchUserProfile } from "./fetch.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import helmet from "helmet";
+import compression from "compression";
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();  
+const app = express();
 
-// Enable CORS for all origins
-app.use(
-    cors({
-        origin: "*",
-    })
-);
-
-// Enable rate limiting to prevent abuse
-app.set("trust proxy", 1);
-const limiter = rateLimit({
-    windowMs: 2 * 60 * 1000, // 15 minutes
-    limit: 15, // Limit of 15 requests per windowMs
-    standardHeaders: "draft-7",
-    legacyHeaders: false,
-});
-
-app.use(limiter);
-
-// Enable JSON parsing
+// Middleware
+app.use(cors({ origin: "*" }));
+app.use(helmet()); // Adds security headers
+app.use(compression()); // Gzip compression
 app.use(express.json());
-
-// Serve static files from the 'public' folder
 app.use(express.static("public"));
 
-// Handle the root route and serve HTML and CSS files
+// Rate limiting
+app.set("trust proxy", 1);
+const limiter = rateLimit({
+  windowMs: 2 * 60 * 1000, // 2 minutes
+  limit: 20, // Max 20 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// Serve index.html
 app.get("/", (req, res) => {
-    res.set("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Fetch user profile for a specific username
+// LeetCode data route
 app.get("/:username", fetchUserProfile);
 
-// Start the server on port 8000
-const PORT = 8000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Internal Server Error" });
+});
+
+// Dynamic port for deployment
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });

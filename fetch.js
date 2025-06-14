@@ -12,16 +12,9 @@ const query = `
         points
       }
       profile {
-        reputation
         ranking
         realName
-        aboutMe
         userAvatar
-        location
-        skillTags
-        websites
-        company
-        school
         starRating
       }
       submissionCalendar
@@ -40,17 +33,14 @@ const query = `
       tagProblemCounts {
         advanced {
           tagName
-          tagSlug
           problemsSolved
         }
         intermediate {
           tagName
-          tagSlug
           problemsSolved
         }
         fundamental {
           tagName
-          tagSlug
           problemsSolved
         }
       }
@@ -58,18 +48,7 @@ const query = `
         id
         displayName
         icon
-        creationDate
       }
-    }
-    recentSubmissionList(username: $username, limit: 20) {
-      title
-      titleSlug
-      timestamp
-      statusDisplay
-      lang
-      runtime
-      memory
-      url
     }
     userContestRanking(username: $username) {
       attendedContestsCount
@@ -91,30 +70,19 @@ const formatData = (data) => {
     username: matchedUser.username,
     profile: {
       realName: matchedUser.profile.realName,
-      aboutMe: matchedUser.profile.aboutMe,
       avatar: matchedUser.profile.userAvatar,
-      location: matchedUser.profile.location,
-      skills: matchedUser.profile.skillTags,
-      websites: matchedUser.profile.websites,
-      company: matchedUser.profile.company,
-      school: matchedUser.profile.school,
       starRating: matchedUser.profile.starRating,
-      reputation: matchedUser.profile.reputation,
       ranking: matchedUser.profile.ranking,
     },
     totalSolved: matchedUser.submitStats.acSubmissionNum[0].count,
     totalQuestions: data.allQuestionsCount[0].count,
     easySolved: matchedUser.submitStats.acSubmissionNum[1].count,
-    totalEasy: data.allQuestionsCount[1].count,
     mediumSolved: matchedUser.submitStats.acSubmissionNum[2].count,
-    totalMedium: data.allQuestionsCount[2].count,
     hardSolved: matchedUser.submitStats.acSubmissionNum[3].count,
-    totalHard: data.allQuestionsCount[3].count,
     totalSubmissions: matchedUser.submitStats.totalSubmissionNum.reduce((acc, cur) => acc + cur.submissions, 0),
     contributionPoints: matchedUser.contributions.points,
     submissionCalendar: JSON.parse(matchedUser.submissionCalendar),
     badges: matchedUser.badges,
-    recentSubmissions: data.recentSubmissionList,
     contestStats: data.userContestRanking
       ? {
           attendedContestsCount: data.userContestRanking.attendedContestsCount,
@@ -135,38 +103,45 @@ const formatData = (data) => {
   };
 };
 
-// function calculateWeaknesses(tagData) {
-//   const allTags = [...tagData.advanced, ...tagData.intermediate, ...tagData.fundamental]
-//     .sort((a, b) => a.problemsSolved - b.problemsSolved);
-//   return allTags.slice(0, 3).map(tag => tag.tagName);
-// }
+export const fetchUserProfile = async (req, res) => {
+  const username = req.params.username;
 
-// function calculateStrengths(tagData) {
-//   const allTags = [...tagData.advanced, ...tagData.intermediate, ...tagData.fundamental]
-//     .sort((a, b) => b.problemsSolved - a.problemsSolved);
-//   return allTags.slice(0, 3).map(tag => tag.tagName);
-// }
+  // 1. Input Validation
+  if (!username || typeof username !== "string" || username.trim().length === 0) {
+    return res.status(400).json({ error: "Invalid username" });
+  }
 
-export const fetchUserProfile = (req, res) => {
-  const user = req.params.username;
-  fetch("https://leetcode.com/graphql", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Referer: "https://leetcode.com",
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    },
-    body: JSON.stringify({ query: query, variables: { username: user } }),
-  })
-    .then((result) => result.json())
-    .then((data) => {
-      if (data.errors) {
-        res.status(400).json({ error: "User not found" });
-      } else {
-        res.json(formatData(data.data));
-      }
-    })
-    .catch((err) => {
-      res.status(500).json({ error: "Internal server error" });
+  try {
+    const response = await fetch("https://leetcode.com/graphql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Referer: "https://leetcode.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      },
+      body: JSON.stringify({
+        query,
+        variables: { username: username.trim() },
+      }),
     });
+
+    if (!response.ok) {
+      // Leetcode returned something other than 200
+      return res.status(response.status).json({ error: "Failed to fetch data from LeetCode" });
+    }
+
+    const result = await response.json();
+
+    if (result.errors || !result.data.matchedUser) {
+      // User doesn't exist
+      return res.status(400).json({ error: "Username not found" });
+    }
+
+    const formatted = formatData(result.data);
+    return res.json(formatted);
+  } catch (error) {
+    // Could be network error, fetch failure, etc.
+    console.error("Error fetching user profile:", error);
+    return res.status(500).json({ error: "Internal server error. Please try again later." });
+  }
 };
