@@ -40,6 +40,7 @@ app.get("/", (req, res) => {
 
 // LeetCode data route
 app.get("/:username", fetchUserProfile);
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // 404 handler
 app.use((req, res) => {
