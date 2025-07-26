@@ -30,16 +30,33 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+app.use(
+  express.static("public", {
+    setHeaders: (res, path) => {
+      if (path.endsWith(".js") || path.endsWith(".css") || path.endsWith(".svg")) {
+        res.setHeader("Cache-Control", "public, max-age=3600"); // 1 hour
+      } else {
+        res.setHeader("Cache-Control", "no-store");
+      }
+    },
+  })
+);
 app.use(limiter);
 
 // Serve index.html
-app.get("/", (req, res) => {
+
+app.get('/', (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // LeetCode data route
-app.get("/:username", fetchUserProfile);
+app.get("/:username(*)", fetchUserProfile);
+// general route 
+app.get('*', (req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 // 404 handler
 app.use((req, res) => {

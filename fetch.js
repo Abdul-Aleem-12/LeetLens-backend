@@ -1,4 +1,5 @@
 import fetch from "node-fetch";
+import pool from "./db.js"; 
 
 const query = `
   query getUserProfile($username: String!) {
@@ -97,19 +98,55 @@ const formatData = (data) => {
       advanced: matchedUser.tagProblemCounts.advanced,
       intermediate: matchedUser.tagProblemCounts.intermediate,
       fundamental: matchedUser.tagProblemCounts.fundamental,
-      // weaknesses: calculateWeaknesses(matchedUser.tagProblemCounts),
-      // strengths: calculateStrengths(matchedUser.tagProblemCounts),
     },
   };
 };
 
-export const fetchUserProfile = async (req, res) => {
-  const username = req.params.username;
-
-  // 1. Input Validation
-  if (!username || typeof username !== "string" || username.trim().length === 0) {
-    return res.status(400).json({ error: "Invalid username" });
+async function logToDB(username, status = 'ATTEMPT', timestamp = new Date()) {
+  try {
+    await pool.query(
+      `INSERT INTO search_logs (username, search_time, status) VALUES ($1, $2, $3)`,
+      [username, timestamp, status]
+    );
+  } catch (logErr) {
+    console.error('Failed to log attempt:', logErr.message);
   }
+}
+
+async function updateLogStatus(username, status, timestamp) {
+  try {
+    await pool.query(
+      `UPDATE search_logs SET status = $1 WHERE username = $2 AND attempted_at = $3`,
+      [status, username, timestamp]
+    );
+  } catch (logUpdateErr) {
+    console.warn(`Could not update log status to ${status}:`, logUpdateErr.message);
+  }
+}
+
+export const fetchUserProfile = async (req, res) => {
+  const rawUsername = req.params.username;
+  const username = rawUsername.trim();
+  const timestamp = new Date();
+
+  // ─── 1. Validate ──────────────────────────────────────────────────────────────
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    await logToDB(username, "BAD REQUEST (special characters)", timestamp);
+    return res.status(400).json({ error: "No special characters except '_'" });
+  }
+
+  if (username.length < 1 || username.length > 25) {
+    await logToDB(username, "BAD REQUEST (size)", timestamp);
+    return res.status(400).json({ error: "Username must be between 1 and 25 characters." });
+  }
+
+  if (!username || typeof username !== "string") {
+    await logToDB(username, "BAD REQUEST", timestamp);
+    return res.status(400).json({ error: "Invalid username format" });
+  }
+
+  // ─── 2. Log Attempt ────────────────────────────────────────────────────────────
+  await logToDB(username, "ATTEMPT", timestamp);
 
   try {
     const response = await fetch("https://leetcode.com/graphql", {
@@ -117,31 +154,31 @@ export const fetchUserProfile = async (req, res) => {
       headers: {
         "Content-Type": "application/json",
         Referer: "https://leetcode.com",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "User-Agent": "Mozilla/5.0",
       },
       body: JSON.stringify({
         query,
-        variables: { username: username.trim() },
+        variables: { username },
       }),
     });
 
     if (!response.ok) {
-      // Leetcode returned something other than 200
+      await updateLogStatus(username, 'LeetCode failure', timestamp);
       return res.status(response.status).json({ error: "Failed to fetch data from LeetCode" });
     }
 
     const result = await response.json();
 
     if (result.errors || !result.data.matchedUser) {
-      // User doesn't exist
-      return res.status(400).json({ error: "Username not found" });
+      await updateLogStatus(username, 'Cannot find user', timestamp);
+      return res.status(400).json({ error: "Username not found – check spelling" });
     }
 
     const formatted = formatData(result.data);
     return res.json(formatted);
   } catch (error) {
-    // Could be network error, fetch failure, etc.
     console.error("Error fetching user profile:", error);
+    await updateLogStatus(username, 'Network failure', timestamp);
     return res.status(500).json({ error: "Internal server error. Please try again later." });
   }
 };
