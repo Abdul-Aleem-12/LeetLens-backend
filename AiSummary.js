@@ -27,14 +27,12 @@ async function tryWithFallback(fn) {
   try {
     return await fn();
   } catch (error) {
-    if (error.response?.status === 401 && process.env.MISTRAL_API_KEY2) {
       console.log('Primary API key failed, trying fallback key...');
       client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY2 });
       return await fn();
     }
     throw error;
   }
-}
 
 export async function GenerateAiSummary(userData) {
   const {
@@ -86,6 +84,7 @@ Respond ONLY with valid JSON in this exact format:
 
     // Robust JSON extraction
     let content = response.choices[0]?.message?.content;
+    console.log("Raw response content:", content);
     if (!content) throw new Error("Empty response from Mistral");
 
     // Handle cases where response might include markdown

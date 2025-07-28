@@ -179,10 +179,12 @@ export const fetchUserProfile = async (req, res) => {
     const aiSummary = await GenerateAiSummary(formatted);
 
     await updateLogStatus(username, 'SUCCESS', timestamp);
+    console.log(`User profile fetched successfully for ${username} at ${timestamp}`);
     return res.json({
       aiSummary,
       userData: formatted,
     });
+    console.log(`no return happend`)
     
 
   } catch (error) {
