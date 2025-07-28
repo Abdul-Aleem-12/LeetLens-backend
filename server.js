@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import compression from "compression";
+import aiSummaryRouter from "./AiSummary.js";
 
 dotenv.config();
 
@@ -52,6 +53,8 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // LeetCode data route
 app.get("/:username(*)", fetchUserProfile);
+// Ai summary route
+app.use('/api', aiSummaryRouter);
 // general route 
 app.get('*', (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate");

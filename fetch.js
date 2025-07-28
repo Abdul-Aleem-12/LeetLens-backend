@@ -1,4 +1,5 @@
 import fetch from "node-fetch";
+import GenerateAiSummary from "./AiSummary.js";
 import pool from "./db.js"; 
 
 const query = `
@@ -175,7 +176,15 @@ export const fetchUserProfile = async (req, res) => {
     }
 
     const formatted = formatData(result.data);
-    return res.json(formatted);
+    const aiSummary = await GenerateAiSummary(formatted);
+
+    await updateLogStatus(username, 'SUCCESS', timestamp);
+    return res.json({
+      aiSummary,
+      userData: formatted,
+    });
+    
+
   } catch (error) {
     console.error("Error fetching user profile:", error);
     await updateLogStatus(username, 'Network failure', timestamp);
