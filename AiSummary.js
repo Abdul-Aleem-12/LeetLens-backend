@@ -2,7 +2,8 @@ import { Mistral } from '@mistralai/mistralai';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
+// Initialize with primary key
+let client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY1 });
 
 const BASIC_PROBLEMS = new Set([
   1, 20, 21, 70, 94, 104, 136, 141, 206
@@ -19,6 +20,19 @@ function countRecentSubmissions(calendar) {
       .reduce((sum, [, count]) => sum + count, 0);
   } catch {
     return 0;
+  }
+}
+
+async function tryWithFallback(fn) {
+  try {
+    return await fn();
+  } catch (error) {
+    if (error.response?.status === 401 && process.env.MISTRAL_API_KEY2) {
+      console.log('Primary API key failed, trying fallback key...');
+      client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY2 });
+      return await fn();
+    }
+    throw error;
   }
 }
 
@@ -62,7 +76,7 @@ Respond ONLY with valid JSON in this exact format:
   "suggestions": ["[#] ProblemName (url)", "...", "..."]
 }`;
 
-  try {
+  const analyzeProfile = async () => {
     const response = await client.chat.complete({
       model: 'mistral-medium',
       messages: [{ role: 'user', content: prompt }],
@@ -97,7 +111,10 @@ Respond ONLY with valid JSON in this exact format:
       score: Math.min(100, Math.max(0, Number(result.score) || 0)),
       suggestions: filteredSuggestions
     };
+  };
 
+  try {
+    return await tryWithFallback(analyzeProfile);
   } catch (err) {
     console.error("Analysis failed:", err.message);
     return {
