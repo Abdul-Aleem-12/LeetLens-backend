@@ -7,7 +7,8 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import compression from "compression";
-import aiSummaryRouter from "./AiSummary.js";
+import { GenerateAiSummary } from './AiSummary.js';
+import { leetDataMiddleware } from "./leetDataMiddleware.js";
 
 dotenv.config();
 
@@ -51,10 +52,27 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
+
+// AI Summary endpoint
+app.get('/summary/:username(*)', leetDataMiddleware, async (req, res) => {
+  try {
+    const aiSummary = await GenerateAiSummary(req);
+    res.json(aiSummary);
+  } catch (error) {
+    console.error('AI Summary failed:', error);
+    res.status(500).json({ 
+      error: "AI analysis failed",
+      fallback: `Basic stats: ${req.formattedData.totalSolved} problems solved` 
+    });
+  }
+});
+
 // LeetCode data route
-app.get("/:username(*)", fetchUserProfile);
-// Ai summary route
-app.use('/api', aiSummaryRouter);
+app.get('/:username(*)', leetDataMiddleware, (req, res) => {
+  res.json(req.formattedData);
+});
+
+
 // general route 
 app.get('*', (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate");

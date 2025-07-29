@@ -14,9 +14,9 @@ function countRecentSubmissions(calendar) {
   try {
     const parsed = typeof calendar === 'string' ? JSON.parse(calendar) : calendar;
     const now = Math.floor(Date.now() / 1000);
-    const ninetyDaysAgo = now - (90 * 24 * 60 * 60);
+    const HundredDaysAgo = now - (90 * 24 * 60 * 60);
     return Object.entries(parsed)
-      .filter(([timestamp]) => parseInt(timestamp) > ninetyDaysAgo)
+      .filter(([timestamp]) => parseInt(timestamp) > HundredDaysAgo)
       .reduce((sum, [, count]) => sum + count, 0);
   } catch {
     return 0;
@@ -27,14 +27,16 @@ async function tryWithFallback(fn) {
   try {
     return await fn();
   } catch (error) {
-      console.log('Primary API key failed, trying fallback key...');
-      client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY2 });
-      return await fn();
-    }
-    throw error;
+    console.log('Primary API key failed, trying fallback key...');
+    client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY2 });
+    return await fn();
   }
+}
 
-export async function GenerateAiSummary(userData) {
+export async function GenerateAiSummary(req) {
+  // Get pre-formatted data from middleware
+  const userData = req.formattedData;
+  
   const {
     username,
     totalSolved,
@@ -45,6 +47,7 @@ export async function GenerateAiSummary(userData) {
     contestStats,
     submissionCalendar,
   } = userData;
+  console.log("userdata is ", userData);
 
   const recentSubmissions = countRecentSubmissions(submissionCalendar);
   const experienceLevel = totalSolved > 300 ? "advanced" :
@@ -70,7 +73,6 @@ Respond ONLY with valid JSON in this exact format:
 {
   "summary": "detailed evaluation...",
   "weaknesses": ["specific technical gap", "...", "..."],
-  "score": 0-100,
   "suggestions": ["[#] ProblemName (url)", "...", "..."]
 }`;
 
@@ -82,12 +84,10 @@ Respond ONLY with valid JSON in this exact format:
       response_format: { type: "json_object" }
     });
 
-    // Robust JSON extraction
     let content = response.choices[0]?.message?.content;
     console.log("Raw response content:", content);
     if (!content) throw new Error("Empty response from Mistral");
 
-    // Handle cases where response might include markdown
     const jsonStart = content.indexOf('{');
     const jsonEnd = content.lastIndexOf('}');
     if (jsonStart === -1 || jsonEnd === -1) throw new Error("No JSON found");
@@ -95,7 +95,6 @@ Respond ONLY with valid JSON in this exact format:
     const jsonString = content.slice(jsonStart, jsonEnd + 1);
     const result = JSON.parse(jsonString);
 
-    // Validate and filter suggestions
     const filteredSuggestions = (result.suggestions || [])
       .filter(s => {
         if (typeof s !== 'string') return false;
@@ -124,5 +123,30 @@ Respond ONLY with valid JSON in this exact format:
     };
   }
 }
+
+export const aiSummaryHandler = async (req, res) => {
+  try {
+    const aiSummary = await GenerateAiSummary(req);
+
+    // Destructure from the returned object
+    const { summary, weaknesses, score, suggestions } = aiSummary;
+
+    res.json({
+      success: true,
+      summary,
+      weaknesses,
+      suggestions,
+      score,
+      timestamp: req.leetcodeTimestamp
+    });
+  } catch (error) {
+    console.error('AI Summary handler error:', error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to generate AI summary",
+      fallbackData: req.formattedData
+    });
+  }
+};
 
 export default GenerateAiSummary;
