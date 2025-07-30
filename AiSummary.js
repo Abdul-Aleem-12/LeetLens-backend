@@ -65,14 +65,15 @@ export async function GenerateAiSummary(req) {
 
   Mention key strengths if Hard/Medium problems or advanced tags (like Dynamic Programming, Backtracking, etc.) are solved often.
 
-  2. 3 specific and **distinct** technical weaknesses for interviews:
+  2. 3 specific and **distinct** data structure or pattern weakness for interviews:
     - Avoid generic comments like "needs more practice"
     - Don't repeat points (e.g., don’t say “Hard problems” and then again “complex problems”)
-    - Do NOT mention weaknesses for topics with more than 30 problems solved
+    - weakness should be data structure like "Trees", "Graphs", "Trie" or patterns like "shortest path", "dynamic programming", "backtracking", etc.
+    - (STRICTLY) Do NOT mention weaknesses for topics with more than 15 problems solved
 
   3. 3 personalized **free** problem suggestions:
     - Must match the user's experience level (${experienceLevel})
-    - Avoid recommending very easy/basic problems (avoid these: ${Array.from(BASIC_PROBLEMS).join(', ')})
+    - if not beginner then Avoid recommending very easy/basic problems (avoid these: ${Array.from(BASIC_PROBLEMS).join(', ')})
     - Format strictly as: [Problem#] Problem Name (leetcode.com/problems/url-name)
 
   Respond ONLY with valid JSON in this exact format:
