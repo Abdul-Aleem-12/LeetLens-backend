@@ -14,7 +14,7 @@ function countRecentSubmissions(calendar) {
   try {
     const parsed = typeof calendar === 'string' ? JSON.parse(calendar) : calendar;
     const now = Math.floor(Date.now() / 1000);
-    const HundredDaysAgo = now - (90 * 24 * 60 * 60);
+    const HundredDaysAgo = now - (100 * 24 * 60 * 60);
     return Object.entries(parsed)
       .filter(([timestamp]) => parseInt(timestamp) > HundredDaysAgo)
       .reduce((sum, [, count]) => sum + count, 0);
@@ -53,32 +53,38 @@ export async function GenerateAiSummary(req) {
   const experienceLevel = totalSolved > 300 ? "advanced" :
                          totalSolved > 150 ? "intermediate" : "beginner";
 
-  const prompt = `You are a senior technical interviewer analyzing a LeetCode profile. Provide:
+  const prompt = `  
+  You are a senior technical interviewer analyzing a LeetCode profile. Provide a JSON response with:
 
-1. A 50-word detailed evaluation considering:
-   - Problem distribution (${easySolved}E/${mediumSolved}M/${hardSolved}H)
-   - Contest performance (${contestStats?.rating || 'no contest history'})
-   - Skill distribution (strongest: ${skills?.advanced?.[0]?.tagName || 'none'})
-   - Recent activity (last 90 days: ${recentSubmissions} submissions)
+  1. A 50-word professional evaluation. Consider:
+    - Experience level: ${experienceLevel} (${totalSolved} total problems solved)
+    - Problem distribution: ${easySolved} Easy / ${mediumSolved} Medium / ${hardSolved} Hard
+    - Recent activity: ${recentSubmissions} submissions in last 100 days
+    - Contest rating: ${contestStats?.rating || 'N/A'} (below 1500 = avg, <1600 = decent, >1600 = strong)
+    - Skill breakdown (by tag): ${Object.entries(skills).map(([k, v]) => `${k}: ${v}`).join(", ")}
 
-2. 3 specific technical weaknesses for interview preparation
+  Mention key strengths if Hard/Medium problems or advanced tags (like Dynamic Programming, Backtracking, etc.) are solved often.
 
-3. 3 personalized problem recommendations:
-   - Must be free problems
-   - Should match user's experience level (${experienceLevel})
-   - Avoid basic problems (${Array.from(BASIC_PROBLEMS).slice(0, 5).join(', ')}...)
-   - Format: [Problem#] ProblemName (leetcode.com/problems/url-name)
+  2. 3 specific and **distinct** technical weaknesses for interviews:
+    - Avoid generic comments like "needs more practice"
+    - Don't repeat points (e.g., don’t say “Hard problems” and then again “complex problems”)
+    - Do NOT mention weaknesses for topics with more than 30 problems solved
 
-Respond ONLY with valid JSON in this exact format:
-{
-  "summary": "detailed evaluation...",
-  "weaknesses": ["specific technical gap", "...", "..."],
-  "suggestions": ["[#] ProblemName (url)", "...", "..."]
-}`;
+  3. 3 personalized **free** problem suggestions:
+    - Must match the user's experience level (${experienceLevel})
+    - Avoid recommending very easy/basic problems (avoid these: ${Array.from(BASIC_PROBLEMS).join(', ')})
+    - Format strictly as: [Problem#] Problem Name (leetcode.com/problems/url-name)
 
+  Respond ONLY with valid JSON in this exact format:
+  {
+    "summary": "....",
+    "weaknesses": ["...", "...", "..."],
+    "suggestions": ["[#] Problem Name (url)", "...", "..."]
+  }
+  `;
   const analyzeProfile = async () => {
     const response = await client.chat.complete({
-      model: 'mistral-medium',
+      model: 'mistral-small',   // mistral-small
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
       response_format: { type: "json_object" }
@@ -118,7 +124,6 @@ Respond ONLY with valid JSON in this exact format:
     return {
       summary: `Technical analysis unavailable for ${username || 'unknown user'}`,
       weaknesses: ["System error"],
-      score: 0,
       suggestions: []
     };
   }
@@ -130,7 +135,7 @@ export const aiSummaryHandler = async (req, res) => {
 
     // Destructure from the returned object
     const { summary, weaknesses, score, suggestions } = aiSummary;
-
+    console.log("AI Summary generated:", aiSummary);
     res.json({
       success: true,
       summary,
