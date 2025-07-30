@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import compression from "compression";
 import { GenerateAiSummary } from './AiSummary.js';
-import { leetDataMiddleware } from "./leetDataMiddleware.js";
+import { leetDataMiddleware } from "./DataMiddleware.js";
 
 dotenv.config();
 
