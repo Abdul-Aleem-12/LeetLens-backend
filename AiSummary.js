@@ -37,6 +37,60 @@ export async function GenerateAiSummary(req) {
   // Get pre-formatted data from middleware
   const userData = req.formattedData;
   
+  function extractWeakTopics(skills, experienceLevel) {
+    const allTopics = [];
+  
+    for (const [level, tags] of Object.entries(skills)) {
+      tags.forEach(tag => {
+        allTopics.push({ ...tag, level });
+      });
+    }
+  
+    // Only consider topics with < 15 problems
+    const filtered = allTopics.filter(t => t.problemsSolved < 15);
+  
+    // Define what's "advanced enough" for experience level
+    const experienceFocus = {
+      beginner: [
+        "Recursion", "Sorting", "Matrix", "Stack", "Queue", "Hash Table", "Array",
+        "String", "Two Pointers", "Sliding Window", "Binary Search", "Greedy"
+      ],
+      intermediate: [
+        "Tree", "Binary Tree", "Linked List", "Graph", "BFS", "DFS", "Heap",
+        "Backtracking", "Prefix Sum", "Bit Manipulation", "Top K Elements",
+        "HashMap + DFS/BFS combos", "Intervals", "Priority Queue"
+      ],
+      advanced: [
+        "Trie", "Union Find", "Segment Tree", "Binary Indexed Tree",
+        "Shortest Path", "Topological Sort", "Game Theory", "Rolling Hash",
+        "Quickselect", "Monotonic Stack", "Monotonic Queue", "Divide and Conquer",
+        "KMP Algorithm", "Heavy-Light Decomposition", "Dynamic Programming on Trees",
+        "Minimum Spanning Tree", "Euler Tour", "Strongly Connected Components (SCC)"
+      ]
+    };
+    
+  
+    const targetSet = new Set(experienceFocus[experienceLevel] || []);
+  
+    // Pick matching weak topics for user level
+    const matched = filtered
+      .filter(t => targetSet.has(t.tagName))
+      .sort((a, b) => a.problemsSolved - b.problemsSolved)
+      .slice(0, 5);
+  
+    // Fallback: take 5 least solved advanced topics (even if >15)
+    if (matched.length < 5) {
+      const advancedTopics = allTopics
+        .filter(t => experienceFocus.advanced.includes(t.tagName))
+        .sort((a, b) => a.problemsSolved - b.problemsSolved)
+        .slice(0, 5);
+  
+      return advancedTopics;
+    }
+  
+    return matched;
+  }
+  
   const {
     username,
     totalSolved,
@@ -48,41 +102,63 @@ export async function GenerateAiSummary(req) {
     submissionCalendar,
   } = userData;
   console.log("userdata is ", userData);
-
+  if (totalSolved === 0) {
+    return {
+      summary: `${username || "This user"} is just starting out on LeetCode. They haven’t solved any problems yet, but it’s a great time to begin the journey! Focus on understanding problem statements, solving Easy-level problems, and building consistent practice habits.`,
+      weaknesses: [
+        "Lack of exposure to basic data structures like Arrays and Strings.",
+        "Unfamiliar with LeetCode’s problem-solving interface and workflow.",
+        "No experience with problem-solving strategies or patterns yet.",
+        "Needs to develop a daily or weekly problem-solving habit.",
+        "Yet to attempt Easy-level problems to gain initial confidence."
+      ],
+      suggestions: [
+        "[1][Easy] Two Sum (https://leetcode.com/problems/two-sum)",
+        "[217][Easy] Contains Duplicate (https://leetcode.com/problems/contains-duplicate)",
+        "[53][Medium] Maximum Subarray (https://leetcode.com/problems/maximum-subarray)",
+        "[121][Easy] Best Time to Buy and Sell Stock (https://leetcode.com/problems/best-time-to-buy-and-sell-stock)",
+        "[20][Easy] Valid Parentheses (https://leetcode.com/problems/valid-parentheses)"
+      ],
+      score: 0
+    };
+  }
   const recentSubmissions = countRecentSubmissions(submissionCalendar);
   const experienceLevel = totalSolved > 300 ? "advanced" :
                          totalSolved > 150 ? "intermediate" : "beginner";
+  const weaknesses = skills ? extractWeakTopics(skills, experienceLevel) : [];
+  
 
   const prompt = `  
-  You are a senior technical interviewer analyzing a LeetCode profile. Provide a JSON response with:
+You are a senior technical interviewer analyzing a LeetCode profile. Provide a JSON response with:
 
-  1. A 50-word professional evaluation. Consider:
-    - Experience level: ${experienceLevel} (${totalSolved} total problems solved)
-    - Problem distribution: ${easySolved} Easy / ${mediumSolved} Medium / ${hardSolved} Hard
-    - Recent activity: ${recentSubmissions} submissions in last 100 days
-    - Contest rating: ${contestStats?.rating || 'N/A'} (below 1500 = avg, <1600 = decent, >1600 = strong)
-    - Skill breakdown (by tag): ${Object.entries(skills).map(([k, v]) => `${k}: ${v}`).join(", ")}
+1. A 50-word professional evaluation. Consider:
+  - Experience level: ${experienceLevel} (${totalSolved} total problems solved)
+  - Problem distribution: ${easySolved} Easy / ${mediumSolved} Medium / ${hardSolved} Hard
+  - Recent activity: ${recentSubmissions} submissions in last 100 days
+  - Contest rating: ${contestStats?.rating || 'N/A'} (below 1500 = avg, <1600 = decent, >1600 = strong)
+  - Skill breakdown (by tag): ${Object.entries(skills).map(([k, v]) => `${k}: ${v}`).join(", ")}
 
-  Mention key strengths if Hard/Medium problems or advanced tags (like Dynamic Programming, Backtracking, etc.) are solved often.
+Mention key strengths if Hard/Medium problems or advanced tags (like Dynamic Programming, Backtracking, etc.) are solved often.
 
-  2. 3 specific and **distinct** data structure or pattern weakness for interviews:
-    - Avoid generic comments like "needs more practice"
-    - Don't repeat points (e.g., don’t say “Hard problems” and then again “complex problems”)
-    - weakness should be data structure like "Trees", "Graphs", "Trie" or patterns like "shortest path", "dynamic programming", "backtracking", etc.
-    - (STRICTLY) Do NOT mention weaknesses for topics with more than 15 problems solved
+2. Rephrase the following list of technical weaknesses into 5 concise sentences, maintaining professional tone:
+${weaknesses.map((w, i) => `${i + 1}. ${w.tagName} — ${w.problemsSolved} problems`).join('\n')}
 
-  3. 3 personalized **free** problem suggestions:
-    - Must match the user's experience level (${experienceLevel})
-    - if not beginner then Avoid recommending very easy/basic problems (avoid these: ${Array.from(BASIC_PROBLEMS).join(', ')})
-    - Format strictly as: [Problem#] Problem Name (leetcode.com/problems/url-name)
+Do not introduce new topics — strictly use only the five weaknesses above. Each sentence should begin with the topic name.
 
-  Respond ONLY with valid JSON in this exact format:
-  {
-    "summary": "....",
-    "weaknesses": ["...", "...", "..."],
-    "suggestions": ["[#] Problem Name (url)", "...", "..."]
-  }
-  `;
+3. Suggest 5 personalized and **free** LeetCode problems:
+  - Match the user's experience level (${experienceLevel})
+  - Avoid overly basic problems (avoid these: ${Array.from(BASIC_PROBLEMS).join(', ')})
+  - Format strictly as: [#][difficulty in leetcode] Problem Name (leetcode.com/problems/url-name)
+  - stritcly free problems only
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "summary": "....",
+  "weaknesses": ["...", "...", "..."],
+  "suggestions": ["[#] Problem Name (url)", "...", "..."]
+}
+`;
+
   const analyzeProfile = async () => {
     const response = await client.chat.complete({
       model: 'mistral-small',   // mistral-small
@@ -108,11 +184,11 @@ export async function GenerateAiSummary(req) {
         const problemNum = parseInt(s.match(/\[(\d+)\]/)?.[1]);
         return problemNum && !BASIC_PROBLEMS.has(problemNum);
       })
-      .slice(0, 3);
+      .slice(0, 5);
 
     return {
       summary: typeof result.summary === 'string' ? result.summary : `Analysis of ${username}'s profile`,
-      weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses.slice(0, 3) : [],
+      weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses.slice(0, 5) : [],
       score: Math.min(100, Math.max(0, Number(result.score) || 0)),
       suggestions: filteredSuggestions
     };
