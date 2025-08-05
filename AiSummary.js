@@ -154,8 +154,8 @@ Do not introduce new topics — strictly use only the five weaknesses above. Eac
 Respond ONLY with valid JSON in this exact format:
 {
   "summary": "....",
-  "weaknesses": ["...", "...", "..."],
-  "suggestions": ["[#] Problem Name (url)", "...", "..."]
+  "weaknesses": ["...", "...", "..."](strictly enclose individual weakness with "" and separate with commas),
+  "suggestions": ["[#problem number inside square brackets][Difficulty level inside square brackets] Problem Name (url)", "...", "..."]
 }
 `;
 
