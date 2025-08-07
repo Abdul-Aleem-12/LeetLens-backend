@@ -113,13 +113,12 @@ export async function GenerateAiSummary(req) {
         "Yet to attempt Easy-level problems to gain initial confidence."
       ],
       suggestions: [
-        "[1][Easy] Two Sum (https://leetcode.com/problems/two-sum)",
-        "[217][Easy] Contains Duplicate (https://leetcode.com/problems/contains-duplicate)",
-        "[53][Medium] Maximum Subarray (https://leetcode.com/problems/maximum-subarray)",
-        "[121][Easy] Best Time to Buy and Sell Stock (https://leetcode.com/problems/best-time-to-buy-and-sell-stock)",
-        "[20][Easy] Valid Parentheses (https://leetcode.com/problems/valid-parentheses)"
+        "[1][Easy] Two Sum (leetcode.com/problems/two-sum)",
+        "[217][Easy] Contains Duplicate (leetcode.com/problems/contains-duplicate)",
+        "[53][Medium] Maximum Subarray (leetcode.com/problems/maximum-subarray)",
+        "[121][Easy] Best Time to Buy and Sell Stock (leetcode.com/problems/best-time-to-buy-and-sell-stock)",
+        "[20][Easy] Valid Parentheses (leetcode.com/problems/valid-parentheses)"
       ],
-      score: 0
     };
   }
   const recentSubmissions = countRecentSubmissions(submissionCalendar);
@@ -189,7 +188,6 @@ Respond ONLY with valid JSON in this exact format:
     return {
       summary: typeof result.summary === 'string' ? result.summary : `Analysis of ${username}'s profile`,
       weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses.slice(0, 5) : [],
-      score: Math.min(100, Math.max(0, Number(result.score) || 0)),
       suggestions: filteredSuggestions
     };
   };
@@ -211,14 +209,13 @@ export const aiSummaryHandler = async (req, res) => {
     const aiSummary = await GenerateAiSummary(req);
 
     // Destructure from the returned object
-    const { summary, weaknesses, score, suggestions } = aiSummary;
+    const { summary, weaknesses, suggestions } = aiSummary;
     console.log("AI Summary generated:", aiSummary);
     res.json({
       success: true,
       summary,
       weaknesses,
       suggestions,
-      score,
       timestamp: req.leetcodeTimestamp
     });
   } catch (error) {
