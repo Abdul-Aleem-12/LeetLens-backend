@@ -65,7 +65,7 @@ export async function GenerateAiSummary(req) {
         "Shortest Path", "Topological Sort", "Game Theory", "Rolling Hash",
         "Quickselect", "Monotonic Stack", "Monotonic Queue", "Divide and Conquer",
         "KMP Algorithm", "Heavy-Light Decomposition", "Dynamic Programming on Trees",
-        "Minimum Spanning Tree", "Euler Tour", "Strongly Connected Components (SCC)"
+        "Minimum Spanning Tree"
       ]
     };
     
@@ -90,9 +90,18 @@ export async function GenerateAiSummary(req) {
   
     return matched;
   }
+  function toTitleCase(str) {
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  
   
   const {
     username,
+    profile,
     totalSolved,
     easySolved,
     mediumSolved,
@@ -103,8 +112,10 @@ export async function GenerateAiSummary(req) {
   } = userData;
   console.log("userdata is ", userData);
   if (totalSolved === 0) {
+    const rawName = profile.realName || username;
+    const DisplayName = toTitleCase(rawName);
     return {
-      summary: `${username || "This user"} is just starting out on LeetCode. They haven’t solved any problems yet, but it’s a great time to begin the journey! Focus on understanding problem statements, solving Easy-level problems, and building consistent practice habits.`,
+      summary: `${ DisplayName || "This user"} is just starting out on LeetCode. They haven’t solved any problems yet, but it’s a great time to begin the journey! Focus on understanding problem statements, solving Easy-level problems, and building consistent practice habits.`,
       weaknesses: [
         "Lack of exposure to basic data structures like Arrays and Strings.",
         "Unfamiliar with LeetCode’s problem-solving interface and workflow.",
