@@ -153,7 +153,7 @@ Mention key strengths if Hard/Medium problems or advanced tags (like Dynamic Pro
 2. Rephrase the following list of technical weaknesses into 5 concise sentences, maintaining professional tone:
 ${weaknesses.map((w, i) => `${i + 1}. ${w.tagName} — ${w.problemsSolved} problems`).join('\n')}
 
-Do not introduce new topics — strictly use only the five weaknesses above. Each sentence should begin with the topic name.
+Do not introduce new topics — strictly use only the five weaknesses above. Each sentence should begin with the topic name dont combine all sentence each must be individual string in array like ["sentence 1", "s2", "s3","s4","s5"].
 
 3. Suggest 5 personalized and **free** LeetCode problems:
   - Match the user's experience level (${experienceLevel})
@@ -207,11 +207,7 @@ Respond ONLY with valid JSON in this exact format:
     return await tryWithFallback(analyzeProfile);
   } catch (err) {
     console.error("Analysis failed:", err.message);
-    return {
-      summary: `Technical analysis unavailable for ${username || 'unknown user'}`,
-      weaknesses: ["System error"],
-      suggestions: []
-    };
+    return; 
   }
 }
 
