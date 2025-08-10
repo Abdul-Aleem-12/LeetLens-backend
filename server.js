@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { fetchUserProfile } from "./fetch.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -9,6 +8,7 @@ import helmet from "helmet";
 import compression from "compression";
 import { GenerateAiSummary } from './AiSummary.js';
 import { leetDataMiddleware } from "./DataMiddleware.js";
+import { supabase } from './supabaseClient.js';
 
 dotenv.config();
 
@@ -23,7 +23,6 @@ app.use(helmet());
 app.use(compression()); 
 app.use(express.json());
 app.use(express.static("public"));
-
 // Rate limiting
 app.set("trust proxy", 1);
 const limiter = rateLimit({
@@ -72,12 +71,35 @@ app.get('/:username(*)', leetDataMiddleware, (req, res) => {
   res.json(req.formattedData);
 });
 
-
 // general route 
 app.get('*', (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+
+// Create a log entry with user_id and IST timestamp
+app.post('/api/log', async (req, res) => {
+  const { user_id } = req.body;
+  if (!user_id) {
+    return res.status(400).json({ error: 'user_id is required' });
+  }
+
+  // Get IST timestamp
+  const offsetMinutes = 330; // IST offset from UTC
+  const nowIST = new Date(Date.now() + offsetMinutes * 60 * 1000);
+
+  const { data, error } = await supabase
+    .from('user_logs') // Change to your actual table name
+    .insert([{ user_id, timestamp: nowIST.toISOString().replace('Z', '+05:30') }]);
+
+  if (error) {
+    console.error('Error inserting log:', error);
+    return res.status(500).json({ error: 'Failed to insert log' });
+  }
+
+  res.json({ message: 'Log created successfully', log: data });
+});
+
 
 // 404 handler
 app.use((req, res) => {

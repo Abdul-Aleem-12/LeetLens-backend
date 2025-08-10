@@ -1,5 +1,4 @@
 import fetch from "node-fetch";
-import { pool, logToDB, updateLogStatus } from "./db.js";
 
 const query = `
   query getUserProfile($username: String!) {
@@ -133,19 +132,18 @@ async function fetchLeetCodeData(username) {
 const leetcodeCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Modify the leetDataMiddleware function:
 export async function leetDataMiddleware(req, res, next) {
   const rawUsername = req.params.username;
   const username = rawUsername.trim();
   const timestamp = new Date();
 
-  // Validation
+  // Validation - moved up for early exit
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    await logToDB(username, "BAD REQUEST (special chars)", timestamp);
     return res.status(400).json({ error: "Only letters, numbers and underscores allowed" });
   }
 
   if (username.length < 1 || username.length > 25) {
-    await logToDB(username, "BAD REQUEST (length)", timestamp);
     return res.status(400).json({ error: "Username must be 1-25 characters" });
   }
 
@@ -159,10 +157,8 @@ export async function leetDataMiddleware(req, res, next) {
     }
   }
 
-  // Fetch fresh data
-  await logToDB(username, "ATTEMPT", timestamp);
-
   try {
+
     const leetcodeData = await fetchLeetCodeData(username);
     const formatted = formatData(leetcodeData);
 
@@ -176,11 +172,9 @@ export async function leetDataMiddleware(req, res, next) {
     req.leetcodeData = leetcodeData;
     req.formattedData = formatted;
     req.leetcodeTimestamp = timestamp;
-
-    await updateLogStatus(username, 'SUCCESS', timestamp);
+    
     next();
   } catch (error) {
-    await updateLogStatus(username, 'FETCH FAILED', timestamp);
     console.error('Middleware fetch error:', error.message);
     
     if (error.message.includes('not found')) {
