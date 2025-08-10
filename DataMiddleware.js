@@ -184,7 +184,6 @@ export async function leetDataMiddleware(req, res, next) {
   }
 }
 
-// In leetDataMiddleware.js - add this at the end
 export const getFormattedUserData = (req) => {
   return {
     data: req.formattedData,

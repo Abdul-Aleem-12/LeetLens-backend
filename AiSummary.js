@@ -171,7 +171,7 @@ Respond ONLY with valid JSON in this exact format:
 
   const analyzeProfile = async () => {
     const response = await client.chat.complete({
-      model: 'mistral-small',   // mistral-small
+      model: 'mistral-small', 
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3,
       response_format: { type: "json_object" }
