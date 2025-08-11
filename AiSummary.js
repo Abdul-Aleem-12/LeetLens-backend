@@ -26,7 +26,6 @@ async function tryWithFallback(fn) {
   try {
     return await fn();
   } catch (error) {
-    console.log('Primary API key failed, trying fallback key...');
     client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY2 });
     return await fn();
   }
@@ -106,7 +105,6 @@ export async function GenerateAiSummary(req) {
     contestStats,
     submissionCalendar,
   } = userData;
-  console.log("userdata is ", userData);
   if (totalSolved === 0) {
     const rawName = profile.realName || username;
     const DisplayName = toTitleCase(rawName);
@@ -174,7 +172,6 @@ Respond ONLY with valid JSON in this exact format:
     });
 
     let content = response.choices[0]?.message?.content;
-    console.log("Raw response content:", content);
     if (!content) throw new Error("Empty response from Mistral");
 
     const jsonStart = content.indexOf('{');
@@ -212,7 +209,6 @@ export const aiSummaryHandler = async (req, res) => {
     const aiSummary = await GenerateAiSummary(req);
 
     const { summary, weaknesses, suggestions } = aiSummary;
-    console.log("AI Summary generated:", aiSummary);
     res.json({
       success: true,
       summary,
