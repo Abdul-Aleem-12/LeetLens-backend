@@ -2,7 +2,6 @@ import { Mistral } from '@mistralai/mistralai';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Initialize with primary key
 let client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY1 });
 
 const BASIC_PROBLEMS = new Set([
@@ -34,7 +33,6 @@ async function tryWithFallback(fn) {
 }
 
 export async function GenerateAiSummary(req) {
-  // Get pre-formatted data from middleware
   const userData = req.formattedData;
   
   function extractWeakTopics(skills, experienceLevel) {
@@ -46,10 +44,8 @@ export async function GenerateAiSummary(req) {
       });
     }
   
-    // Only consider topics with < 15 problems
     const filtered = allTopics.filter(t => t.problemsSolved < 15);
   
-    // Define what's "advanced enough" for experience level
     const experienceFocus = {
       beginner: [
         "Recursion", "Sorting", "Matrix", "Stack", "Queue", "Hash Table", "Array",
@@ -215,7 +211,6 @@ export const aiSummaryHandler = async (req, res) => {
   try {
     const aiSummary = await GenerateAiSummary(req);
 
-    // Destructure from the returned object
     const { summary, weaknesses, suggestions } = aiSummary;
     console.log("AI Summary generated:", aiSummary);
     res.json({

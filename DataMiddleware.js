@@ -128,17 +128,14 @@ async function fetchLeetCodeData(username) {
   return result.data;
 }
 
-// Cache setup (optional)
 const leetcodeCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Modify the leetDataMiddleware function:
 export async function leetDataMiddleware(req, res, next) {
   const rawUsername = req.params.username;
   const username = rawUsername.trim();
   const timestamp = new Date();
 
-  // Validation - moved up for early exit
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
     return res.status(400).json({ error: "Only letters, numbers and underscores allowed" });
   }
@@ -147,7 +144,6 @@ export async function leetDataMiddleware(req, res, next) {
     return res.status(400).json({ error: "Username must be 1-25 characters" });
   }
 
-  // Check cache
   if (leetcodeCache.has(username)) {
     const { data, timestamp: cacheTime } = leetcodeCache.get(username);
     if (Date.now() - cacheTime < CACHE_TTL) {
@@ -162,13 +158,11 @@ export async function leetDataMiddleware(req, res, next) {
     const leetcodeData = await fetchLeetCodeData(username);
     const formatted = formatData(leetcodeData);
 
-    // Update cache
     leetcodeCache.set(username, {
       data: leetcodeData,
       timestamp: Date.now()
     });
 
-    // Attach to request
     req.leetcodeData = leetcodeData;
     req.formattedData = formatted;
     req.leetcodeTimestamp = timestamp;

@@ -44,12 +44,11 @@ app.use(
 );
 app.use(limiter);
 
-// Serve index.html
-
 app.get('/', (req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
+// health check endpoint
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // AI Summary endpoint
@@ -83,16 +82,10 @@ app.post('/api/log', async (req, res) => {
     return res.status(400).json({ error: 'user_id is required' });
   }
 
-  // Get IST timestamp
-  const offsetMinutes = 330; // IST offset from UTC
-  const nowIST = new Date();
-  nowIST.setMinutes(nowIST.getMinutes() + offsetMinutes);
-  const istString = nowIST.toISOString().slice(0, 19).replace('T', ' '); 
-
   const { data, error } = await supabase
-    .from('user_logs') // Change to your actual table name
-    .insert([{ user_id, timestamp: istString }])
-    .select('id') // return only the id
+    .from('user_logs') 
+    .insert([{ user_id }])
+    .select('id') 
     .single();
 
   if (error) {
@@ -153,6 +146,32 @@ app.post("/api/log/scroll", async (req, res) => {
   res.json({ message: "Scroll status updated", log: data });
 });
 
+// Feedback endpoint
+app.post('/api/feedback', async (req, res) => {
+  const { user_id, rating_ui, rating_func, feedback } = req.body;
+
+  if (!user_id || !rating_ui || !rating_func) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('user_logs')
+      .update([{
+        rating_ui,
+        rating_func,
+        feedback,
+      }])
+      .eq('id', user_id)
+
+    if (error) throw error;
+
+    res.json({ message: 'Feedback saved', feedback: data });
+  } catch (error) {
+    console.error('Feedback save error:', error);
+    res.status(500).json({ error: 'Failed to save feedback' });
+  }
+});
 
 // 404 handler
 app.use((req, res) => {
@@ -174,4 +193,4 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 
-export default app; // Export for testing purposes
+export default app; 
