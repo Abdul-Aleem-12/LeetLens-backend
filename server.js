@@ -77,7 +77,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Create a log entry with user_id and IST timestamp
 app.post('/api/log', async (req, res) => {
   const { user_id } = req.body;
   if (!user_id) {
@@ -86,11 +85,15 @@ app.post('/api/log', async (req, res) => {
 
   // Get IST timestamp
   const offsetMinutes = 330; // IST offset from UTC
-  const nowIST = new Date(Date.now() + offsetMinutes * 60 * 1000);
+  const nowIST = new Date();
+  nowIST.setMinutes(nowIST.getMinutes() + offsetMinutes);
+  const istString = nowIST.toISOString().slice(0, 19).replace('T', ' '); 
 
   const { data, error } = await supabase
     .from('user_logs') // Change to your actual table name
-    .insert([{ user_id, timestamp: nowIST.toISOString().replace('Z', '+05:30') }]);
+    .insert([{ user_id, timestamp: istString }])
+    .select('id') // return only the id
+    .single();
 
   if (error) {
     console.error('Error inserting log:', error);
@@ -98,6 +101,56 @@ app.post('/api/log', async (req, res) => {
   }
 
   res.json({ message: 'Log created successfully', log: data });
+});
+
+// update log
+app.post('/api/log/update', async (req, res) => {
+  console.log("Update log request body:", req.body); 
+  const { id, Real_Name, Total_Solved } = req.body;
+
+  if (!id || !Real_Name || Total_Solved === undefined) {
+    return res.status(400).json({ error: 'Missing values' });
+  }
+
+  const { data, error } = await supabase
+    .from('user_logs')
+    .update({
+      Real_name: Real_Name,       
+      Total_solved: Total_Solved  
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating log:', error);
+    return res.status(500).json({ error: 'Failed to update log' });
+  }
+
+  res.json({ message: 'Updated successfully', log: data });
+});
+
+// scroll status update
+app.post("/api/log/scroll", async (req, res) => {
+  const { id, fully_scrolled } = req.body;
+
+  if (!id) {
+    return res.status(400).json({ error: "Missing log ID" });
+  }
+
+  const { data, error } = await supabase
+    .from("user_logs")
+    .update({ fully_scrolled })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating scroll status:", error);
+    return res.status(500).json({ error: "Failed to update scroll status" });
+  }
+
+  res.json({ message: "Scroll status updated", log: data });
 });
 
 
