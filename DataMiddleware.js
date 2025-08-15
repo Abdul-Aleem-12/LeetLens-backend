@@ -136,7 +136,7 @@ export async function leetDataMiddleware(req, res, next) {
   const username = rawUsername.trim();
   const timestamp = new Date();
 
-  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
     return res.status(400).json({ error: "Only letters, numbers and underscores allowed" });
   }
 
