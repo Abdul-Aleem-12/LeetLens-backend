@@ -169,7 +169,7 @@ export async function leetDataMiddleware(req, res, next) {
     
     next();
   } catch (error) {
-    console.error('Middleware fetch error:', error.message);
+    console.error('Middleware error:', error.message);
     
     if (error.message.includes('not found')) {
       return res.status(404).json({ error: "Username not found" });
@@ -180,7 +180,6 @@ export async function leetDataMiddleware(req, res, next) {
 
 export const getFormattedUserData = (req) => {
   return {
-    data: req.formattedData,
-    timestamp: req.leetcodeTimestamp
+    data: req.formattedData
   };
 };

@@ -76,6 +76,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// intial user log to db
 app.post('/api/log', async (req, res) => {
   const { user_id } = req.body;
   if (!user_id) {
@@ -96,7 +97,7 @@ app.post('/api/log', async (req, res) => {
   res.json({ message: 'Log created successfully', log: data });
 });
 
-// update log
+// update existing log
 app.post('/api/log/update', async (req, res) => {
   console.log("Update log request body:", req.body); 
   const { id, Real_Name, Total_Solved } = req.body;
